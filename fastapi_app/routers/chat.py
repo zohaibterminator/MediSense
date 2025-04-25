@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi_app.routers.schemas.models import Message
+from fastapi_app.routers.schemas.models import Message, Chat
 from fastapi_app.db.database import get_db
 from sqlalchemy.orm import Session
 from langchain_groq import ChatGroq
@@ -9,8 +9,45 @@ from fastapi_app.db.utils.groq import getGroq
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from uuid import UUID
 
 router = APIRouter()
+
+@router.post("/create_chat/")
+async def create_chat(chat: Chat, db: Session = Depends(get_db)):
+    try:
+        chat.user_id = UUID(chat.user_id)
+
+        existing_chat = db.query(models.Chat).filter(models.Chat.title == chat.title and models.Chat.user_id == chat.user_id).first()
+        if existing_chat:
+            raise HTTPException(
+                status_code=400,
+                detail="Chat with this title already exists"
+            )
+
+        db_chat = models.Chat(
+            title=chat.title,
+            user_id=chat.user_id,
+            visibility=chat.visibility
+        )
+
+        db.add(db_chat)
+        db.commit()
+        db.refresh(db_chat)
+
+        return {
+            "message": "Chat created successfully",
+            "chat_id": str(db_chat.id)
+        }
+
+    except Exception as e:
+        db.rollback()
+        print(e)
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
 
 @router.post("/infer/")
 def infer_diagnosis(message: Message, db: Session = Depends(get_db), llm: ChatGroq = Depends(getGroq)):

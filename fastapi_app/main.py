@@ -7,7 +7,7 @@ import uvicorn
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Medisense",
+    title="MediSense",
     version="1.0.0",
 )
 

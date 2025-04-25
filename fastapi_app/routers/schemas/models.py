@@ -19,10 +19,8 @@ class ChatVisibility(str, Enum):
 
 
 class Chat(BaseModel):
-    id: UUID
-    created_at: datetime
     title: str
-    user_id: UUID
+    user_id: str
     visibility: ChatVisibility
 
     class Config:

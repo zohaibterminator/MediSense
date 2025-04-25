@@ -44,6 +44,10 @@ const Login = () => {
         throw new Error(data.detail || 'Login failed');
       }
 
+         // Store user ID and email
+      localStorage.setItem('userId', data.user_id);
+      localStorage.setItem('userEmail', email);
+      
       toast({
         title: "Login successful",
         description: "You have been logged in successfully",

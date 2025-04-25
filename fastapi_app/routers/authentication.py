@@ -30,9 +30,12 @@ async def register_user(user: User, db: Session = Depends(get_db)):
 
         db.add(db_user)
         db.commit()
+        db.refresh(db_user)
         
         return {
             "message": "User created successfully",
+            "user_id": str(db_user.id),
+            "email": db_user.email
         }
 
     except Exception as e:
@@ -57,6 +60,8 @@ async def sign_in(user: User, db: Session = Depends(get_db)):
 
         return {
             "message": "User signed in successfully",
+            "user_id": str(existing_user.id),
+            "email": existing_user.email
         }
 
     except Exception as e:
