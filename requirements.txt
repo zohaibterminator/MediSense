@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+python-dotenv
+alembic
+sqlalchemy
+psycopg2-binary
+pydantic[email]
+streamlit
+asyncpg
+databases
+passlib[bcrypt]
+tensorflow
+langchain
+langchain-huggingface
+langchain-qdrant
+langchain-groq

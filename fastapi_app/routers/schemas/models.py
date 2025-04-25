@@ -1,0 +1,71 @@
+from pydantic import BaseModel, EmailStr
+from typing import List, Optional
+from uuid import UUID
+from datetime import datetime
+from enum import Enum
+
+
+class User(BaseModel):
+    email: EmailStr
+    password: str
+
+    class Config:
+        orm_mode = True
+
+
+class ChatVisibility(str, Enum):
+    public = "public"
+    private = "private"
+
+
+class Chat(BaseModel):
+    id: UUID
+    created_at: datetime
+    title: str
+    user_id: UUID
+    visibility: ChatVisibility
+
+    class Config:
+        orm_mode = True
+
+
+class Message(BaseModel):
+    content: str
+
+    class Config:
+        orm_mode = True
+
+
+class Vote(BaseModel):
+    chat_id: UUID
+    message_id: UUID
+    is_upvoted: bool
+
+    class Config:
+        orm_mode = True
+
+
+class Document(BaseModel):
+    id: UUID
+    created_at: datetime
+    title: str
+    content: Optional[str]
+    user_id: UUID
+
+    class Config:
+        orm_mode = True
+
+
+class Suggestion(BaseModel):
+    id: UUID
+    document_id: UUID
+    document_created_at: datetime
+    original_text: str
+    suggested_text: str
+    description: Optional[str]
+    is_resolved: bool
+    user_id: UUID
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
