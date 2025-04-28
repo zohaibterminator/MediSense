@@ -41,10 +41,9 @@ class Chat(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     title = Column(Text, nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("User.id", ondelete="CASCADE"), nullable=False)
-    visibility = Column(Enum('public', 'private', name="visibility_enum"), nullable=False, default='private')
 
     user = relationship("User", back_populates="chats")
-    messages = relationship("Message", back_populates="chat")
+    messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan")
     votes = relationship("Vote", back_populates="chat")
 
 

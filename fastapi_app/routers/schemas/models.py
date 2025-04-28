@@ -13,21 +13,16 @@ class User(BaseModel):
         orm_mode = True
 
 
-class ChatVisibility(str, Enum):
-    public = "public"
-    private = "private"
-
-
 class Chat(BaseModel):
     title: str
-    user_id: str
-    visibility: ChatVisibility
+    user_id: UUID
 
     class Config:
         orm_mode = True
 
 
 class Message(BaseModel):
+    chat_id: UUID
     content: str
 
     class Config:
