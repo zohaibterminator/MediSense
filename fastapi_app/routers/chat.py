@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from fastapi_app.routers.schemas.models import Message, Chat
 from fastapi_app.db.database import get_db
 from sqlalchemy.orm import Session
@@ -10,8 +11,17 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from uuid import UUID
+import asyncio
 
 router = APIRouter()
+
+
+async def generate_stream(runnable, input_text):
+    """Generator function to yield chunks of the response"""
+    async for chunk in runnable.astream(input_text):
+        yield f"data: {chunk}\n\n"
+        await asyncio.sleep(0.02)  # Small delay to prevent overwhelming the client
+
 
 @router.post("/create_chat/")
 async def create_chat(chat: Chat, db: Session = Depends(get_db)):
@@ -73,8 +83,7 @@ def infer_diagnosis(message: Message, db: Session = Depends(get_db), llm: ChatGr
         | StrOutputParser()
     )
 
-    result = runnable.invoke(message.content)
-
-    return {
-        "response": result
-    }
+    return StreamingResponse(
+        generate_stream(runnable, message.content),
+        media_type="text/event-stream"
+    )

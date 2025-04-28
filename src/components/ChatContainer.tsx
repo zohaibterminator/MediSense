@@ -35,68 +35,93 @@ export const ChatContainer = ({ chatId }: ChatContainerProps) => {
   }, [messages]);
 
   // Update the handleSend function in ChatContainer
-const handleSend = async () => {
-  if (!input.trim() && attachments.length === 0) return;
-
-  const attachmentUrls = await Promise.all(
-    attachments.map(async (file) => {
-      const url = URL.createObjectURL(file);
-      return {
-        type: file.type.startsWith("image/") ? "image" : "file",
-        url,
-        name: file.name,
-      };
-    })
-  );
-
-  const userMessage: Message = {
-    id: Date.now().toString(),
-    content: input,
-    role: "user",
-    timestamp: new Date(),
-    attachments: attachmentUrls,
-  };
-
-  setMessages((prev) => [...prev, userMessage]);
-  setInput("");
-  setAttachments([]);
-  setIsLoading(true);
-
-  try {
-    const response = await fetch('http://localhost:8000/chat/infer/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        content: input
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to get response from LLM');
-    }
-
-    const data = await response.json();
-
-    const botMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      content: data.response,
-      role: "assistant",
+  const handleSend = async () => {
+    if (!input.trim() && attachments.length === 0) return;
+  
+    const attachmentUrls = await Promise.all(
+      attachments.map(async (file) => {
+        const url = URL.createObjectURL(file);
+        return {
+          type: file.type.startsWith("image/") ? "image" : "file",
+          url,
+          name: file.name,
+        };
+      })
+    );
+  
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: input,
+      role: "user",
       timestamp: new Date(),
+      attachments: attachmentUrls,
     };
-
-    setMessages((prev) => [...prev, botMessage]);
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : 'Failed to get response from AI',
-      variant: "destructive",
-    });
-  } finally {
-    setIsLoading(false);
-  }
-};
+  
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setAttachments([]);
+    setIsLoading(true);
+  
+    try {
+      const response = await fetch('http://localhost:8000/chat/infer/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: input
+        }),
+      });
+  
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to get response from LLM');
+      }
+  
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+  
+      let botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "",
+        role: "assistant",
+        timestamp: new Date(),
+      };
+  
+      setMessages((prev) => [...prev, botMessage]);
+  
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+  
+        const chunk = decoder.decode(value, { stream: true });
+  
+        // Your server sends: `data: chunk\n\n`
+        const lines = chunk.split("\n\n").filter(Boolean);
+  
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const text = line.replace("data: ", "");
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              if (last.role === "assistant") {
+                last.content += text;
+              }
+              return updated;
+            });
+          }
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to get response from AI',
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
