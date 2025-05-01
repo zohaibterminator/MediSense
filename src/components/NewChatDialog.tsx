@@ -7,13 +7,13 @@ import { useToast } from "@/hooks/use-toast";
 interface NewChatDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (chatName: string) => void;
+  onChatCreated: (chatId: string) => void; // Changed prop name and type
 }
 
 export const NewChatDialog = ({
   open,
   onOpenChange,
-  onSubmit,
+  onChatCreated, // Updated prop name
 }: NewChatDialogProps) => {
   const [chatName, setChatName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +30,7 @@ export const NewChatDialog = ({
         throw new Error('User not authenticated');
       }
 
-      const response = await fetch('http://localhost:8000/chat/create_chat/', {
+      const response = await fetch('http://localhost:8000/chat/create', { // Fixed endpoint
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,7 +38,6 @@ export const NewChatDialog = ({
         body: JSON.stringify({
           title: chatName,
           user_id: userId,
-          visibility: 'private',
         }),
       });
 
@@ -48,14 +47,13 @@ export const NewChatDialog = ({
       }
 
       const data = await response.json();
-
-      onSubmit(chatName);
+      onChatCreated(data.id); // Pass only the chat ID
       setChatName("");
-
       toast({
         title: "Chat created",
         description: `"${chatName}" has been created successfully`,
       });
+      onOpenChange(false);
 
     } catch (error) {
       toast({
@@ -65,7 +63,6 @@ export const NewChatDialog = ({
       });
     } finally {
       setIsLoading(false);
-      onOpenChange(false);
     }
   };
 

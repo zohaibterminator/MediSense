@@ -21,9 +21,14 @@ class Chat(BaseModel):
         orm_mode = True
 
 
+class ChatRole(str, Enum):
+    user = "user"
+    assistant = "assistant"
+
+
 class Message(BaseModel):
-    chat_id: UUID
     content: str
+    role: ChatRole
 
     class Config:
         orm_mode = True

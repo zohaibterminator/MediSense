@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
@@ -8,31 +8,62 @@ import { NewChatDialog } from "@/components/NewChatDialog";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, User } from "lucide-react";
 
+interface Message {
+  id: string;
+  content: string;
+  role: "user" | "assistant";
+  timestamp: Date;
+}
+
 const Index = () => {
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
   const [currentChat, setCurrentChat] = useState<string | null>(null);
+  const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  // Get user data from localStorage
+  const userId = localStorage.getItem('userId');
+  const userEmail = localStorage.getItem('userEmail');
 
-  // Mock user data - replace with actual user data from your auth system
-  const user = {
-    name: "John Doe",
-    email: "john@example.com",
-  };
+  const handleChatCreated = useCallback((chatId: string) => {
+    setCurrentChat(chatId);
+    setCurrentMessages([]);
+    setRefreshTrigger(prev => prev + 1); // Clear messages for new chat
+  }, []);
 
-  // Create a ref to store the addNewChat function from Sidebar
-  const addNewChatRef = useRef<((chatName: string) => void) | null>(null);
-
-  const handleNewChat = (chatName: string) => {
-    if (chatName.trim()) {
-      // Call the addNewChat function from Sidebar through the ref
-      addNewChatRef.current?.(chatName);
-      setShowNewChatDialog(false);
+  const handleChatSelect = async (chatId: string) => {
+    setIsLoadingMessages(true);
+    setCurrentChat(chatId);
+    try {
+      const response = await fetch(`http://localhost:8000/chat/${chatId}/get_messages`);
+      if (response.ok) {
+        const messages = await response.json();
+        setCurrentMessages(messages.map((msg: any) => ({
+          id: msg.id,
+          content: msg.content,
+          role: msg.role === 'user' ? 'user' : 'assistant',
+          timestamp: new Date(msg.created_at)
+        })));
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to load messages',
+        variant: "destructive",
+      });
+      setCurrentChat(null);
+    } finally {
+      setIsLoadingMessages(false);
     }
   };
 
   const handleLogout = () => {
-    // TODO: Implement actual logout logic
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
+    setCurrentChat(null);
+    setCurrentMessages([]);
     toast({
       title: "Logged out",
       description: "You have been successfully logged out.",
@@ -45,8 +76,9 @@ const Index = () => {
       <Sidebar
         onNewChat={() => setShowNewChatDialog(true)}
         currentChat={currentChat}
-        setCurrentChat={setCurrentChat}
-        addNewChatRef={addNewChatRef}
+        setCurrentChat={handleChatSelect}
+        userId={userId}
+        refreshTrigger={refreshTrigger}
       />
       
       <main className="flex-1 flex flex-col">
@@ -58,8 +90,8 @@ const Index = () => {
                 <User className="h-4 w-4" />
               </div>
               <div className="text-sm">
-                <div className="font-medium">{user.name}</div>
-                <div className="text-muted-foreground">{user.email}</div>
+                <div className="font-medium">{userEmail || 'User'}</div>
+                <div className="text-muted-foreground">Active</div>
               </div>
             </div>
             <ThemeToggle />
@@ -75,7 +107,11 @@ const Index = () => {
         </header>
         
         {currentChat ? (
-          <ChatContainer chatId={currentChat} />
+          <ChatContainer 
+            chatId={currentChat}
+            messages={currentMessages}
+            isLoading={isLoadingMessages}
+          />
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center space-y-4">
@@ -92,7 +128,7 @@ const Index = () => {
       <NewChatDialog
         open={showNewChatDialog}
         onOpenChange={setShowNewChatDialog}
-        onSubmit={handleNewChat}
+        onChatCreated={handleChatCreated}
       />
     </div>
   );
