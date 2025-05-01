@@ -40,3 +40,32 @@
 .read-the-docs {
   color: #888;
 }
+
+.markdown {
+  line-height: 1.6;
+}
+
+.markdown h1, .markdown h2, .markdown h3 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.markdown ul, .markdown ol {
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+.markdown table {
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.markdown th, .markdown td {
+  border: 1px solid #ddd;
+  padding: 0.5em 1em;
+}
+
+.markdown th {
+  background-color: #f5f5f5;
+}

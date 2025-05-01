@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 from fastapi_app.routers.schemas.models import Message, Chat
 from fastapi_app.db.database import get_db
@@ -11,6 +11,9 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from fastapi_app.db.queries import getMessagesByChatId, getChatbyUserId, getChatById
+from llama_cloud_services import LlamaParse
+import os
+import tempfile
 from uuid import UUID
 import asyncio
 
@@ -156,6 +159,38 @@ async def get_chat_messages(chat_id: UUID, db: Session = Depends(get_db)):
         )
 
 
+@router.post("/parse-pdf")
+async def parse_pdf(file: UploadFile = File(...)):
+    try:
+        if file.content_type != "application/pdf":
+            raise HTTPException(400, detail="Only PDF files are accepted")
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_path = temp_file.name
+
+        parser = LlamaParse(
+            api_key=os.getenv("LLAMA_CLOUD_API_KEY"),
+            num_workers=1,
+            verbose=True,
+            language="en",
+            result_type="markdown",
+        )
+
+        result = await parser.aparse(temp_path)
+
+        os.unlink(temp_path)
+
+        return {"text": result}
+
+    except Exception as e:
+        if 'temp_path' in locals() and os.path.exists(temp_path):
+            os.unlink(temp_path)
+        print(e)
+        raise HTTPException(500, detail=str(e))
+
+
 @router.post("/{chat_id}/infer")
 async def infer_diagnosis(chat_id: UUID, message: Message, db: Session = Depends(get_db), llm: ChatGroq = Depends(getGroq)):
     try:
@@ -168,8 +203,14 @@ async def infer_diagnosis(chat_id: UUID, message: Message, db: Session = Depends
 
         template = '''
         You're a compassionate AI doctor designed to help users with medical inquiries. Your primary goal is to provide accurate medical advice, recommend treatment options for various health conditions, and prioritize the well-being of individuals seeking assistance. In this particular task, your objective is to diagnose a medical condition and suggest treatment options to the user. You will be provided with the user's query, and relevant context to make an accurate assessment. Remember, if there's any uncertainty or the condition is complex, always advise the user to seek professional medical help promptly. \
-        Please be thorough in your assessment and ensure that your recommendations are based on the provided context. If the context does not match the query, you can say that you don't have the expertise to deal with the issue. Your responses should be clear and informative. Your guidance could potentially have a significant impact on someone's health, so accuracy and empathy are crucial in your interactions with users. \
-            
+        Please be thorough in your assessment and ensure that your recommendations are based on the provided context. If the context does not match the query, you can say that you don't have the expertise to deal with the issue. Your responses should be clear and informative. Your guidance could potentially have a significant impact on someone's health, so accuracy and empathy are crucial in your interactions with users. Provide responses in markdown format with: \
+        - Clear headings (##) \
+        - Bullet points for lists \
+        - **Bold** for important terms \
+        - Tables when presenting lab results \
+        - Proper medical terminology \
+        - A concise summary at the end. \
+
         Previous Msgs: {previous_msgs}
         Context: {context}
 
