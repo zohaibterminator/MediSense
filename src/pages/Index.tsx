@@ -37,7 +37,7 @@ const Index = () => {
     setIsLoadingMessages(true);
     setCurrentChat(chatId);
     try {
-      const response = await fetch(`http://localhost:8000/chat/${chatId}/get_messages`);
+      const response = await fetch(`${process.env.BACKEND_URL}/chat/${chatId}/get_messages`);
       if (response.ok) {
         const messages = await response.json();
         setCurrentMessages(messages.map((msg: any) => ({

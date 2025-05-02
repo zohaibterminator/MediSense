@@ -39,7 +39,7 @@ export const Sidebar = ({
     
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/chat/?user_id=${userId}`);
+      const response = await fetch(`${process.env.BACKEND_URL}/chat/?user_id=${userId}`);
       if (!response.ok) throw new Error('Failed to fetch chats');
       const data = await response.json();
 
@@ -67,7 +67,7 @@ export const Sidebar = ({
     if (!userId) return;
 
     try {
-      const response = await fetch('http://localhost:8000/chat/create', {
+      const response = await fetch('${process.env.BACKEND_URL}/chat/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,7 +99,7 @@ export const Sidebar = ({
 
   const deleteChat = async (chatId: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/chat/delete/${chatId}`, {
+      const response = await fetch(`${process.env.BACKEND_URL}/chat/delete/${chatId}`, {
         method: 'DELETE',
       });
 
@@ -139,7 +139,7 @@ export const Sidebar = ({
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/chat/update/${chatId}`, {
+      const response = await fetch(`${process.env.BACKEND_URL}/chat/update/${chatId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

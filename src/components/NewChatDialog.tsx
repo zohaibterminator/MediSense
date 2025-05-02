@@ -30,7 +30,7 @@ export const NewChatDialog = ({
         throw new Error('User not authenticated');
       }
 
-      const response = await fetch('http://localhost:8000/chat/create', { // Fixed endpoint
+      const response = await fetch('${process.env.BACKEND_URL}/chat/create', { // Fixed endpoint
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -37,7 +37,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 
   try {
-    const response = await fetch('http://localhost:8000/auth/sign_up/', {
+    const response = await fetch(`${process.env.BACKEND_URL}/auth/sign_up/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

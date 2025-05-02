@@ -50,7 +50,7 @@ export const ChatContainer = ({
   // Add this function to save the assistant message
 const saveAssistantMessage = async (content: string) => {
   try {
-    const response = await fetch(`http://localhost:8000/chat/${chatId}/add_message`, {
+    const response = await fetch(`${process.env.BACKEND_URL}/chat/${chatId}/add_message`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ const parsePdfOnBackend = async (file: File): Promise<string> => {
       description: "Analyzing lab report...",
     });
 
-    const response = await fetch(`http://localhost:8000/chat/parse-pdf`, {
+    const response = await fetch(`${process.env.BACKEND_URL}/chat/parse-pdf`, {
       method: "POST",
       body: formData,
     });
@@ -179,7 +179,7 @@ const handleSend = async () => {
     
     setLocalMessages(prev => [...prev, assistantMessage]);
 
-    const response = await fetch(`http://localhost:8000/chat/${chatId}/infer`, {
+    const response = await fetch(`${process.env.BACKEND_URL}/chat/${chatId}/infer`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
