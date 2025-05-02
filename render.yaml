@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fastapi-app
+    name: medisense
     env: docker
     region: oregon
     plan: free
