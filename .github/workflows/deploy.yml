@@ -35,7 +35,6 @@ jobs:
     - name: SSH and deploy with Docker
       run: |
         ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_HOST }} << 'EOF'
-          cd ~/api
           docker ps -a | grep fastapi_app || docker stop fastapi_app || true
           docker ps -a | grep fastapi_app || docker rm fastapi_app || true
           docker build -t fastapi-app .
