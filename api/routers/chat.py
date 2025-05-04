@@ -1,16 +1,16 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
-from fastapi_app.routers.schemas.models import Message, Chat
-from fastapi_app.db.database import get_db
+from api.routers.schemas.models import Message, Chat
+from api.db.database import get_db
 from sqlalchemy.orm import Session
 from langchain_groq import ChatGroq
-from fastapi_app.db import models
-from fastapi_app.db.utils.vector_store import *
-from fastapi_app.db.utils.groq import getGroq
+from api.db import models
+from api.db.utils.vector_store import *
+from api.db.utils.groq import getGroq
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from fastapi_app.db.queries import getMessagesByChatId, getChatbyUserId, getChatById
+from api.db.queries import getMessagesByChatId, getChatbyUserId, getChatById
 from llama_cloud_services import LlamaParse
 import os
 import tempfile

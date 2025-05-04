@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from fastapi_app.db.models import Base
+from api.db.models import Base
 
 from dotenv import load_dotenv
 import os

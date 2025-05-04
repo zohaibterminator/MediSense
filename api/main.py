@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi_app.db.database import engine, Base
-from fastapi_app.routers import authentication, chat
+from api.db.database import engine, Base
+from api.routers import authentication, chat
 import uvicorn
 
 Base.metadata.create_all(bind=engine)

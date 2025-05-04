@@ -1,6 +1,6 @@
-from fastapi_app.db.database import get_db
+from api.db.database import get_db
 from sqlalchemy.orm import Session
-from fastapi_app.db import models
+from api.db import models
 from uuid import UUID
 
 

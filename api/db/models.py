@@ -14,7 +14,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship, validates
 from datetime import datetime
 import uuid as uuid_lib
-from fastapi_app.db.utils.hashing import hash_password
+from api.db.utils.hashing import hash_password
 
 Base = declarative_base()
 
