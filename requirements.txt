@@ -5,7 +5,6 @@ alembic
 sqlalchemy
 psycopg2-binary
 pydantic[email]
-streamlit
 asyncpg
 databases
 passlib[bcrypt]
