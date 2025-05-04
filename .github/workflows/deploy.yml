@@ -30,7 +30,7 @@ jobs:
       run: |
         rsync -avz --exclude '.git' -e "ssh -i key.pem -o StrictHostKeyChecking=no" ./api/ ${{ secrets.EC2_HOST }}:/home/ubuntu/api
         rsync -avz --exclude '.git' -e "ssh -i key.pem -o StrictHostKeyChecking=no" ./requirements.txt ${{ secrets.EC2_HOST }}:/home/ubuntu/api/
-        rsync -avz --exclude '.git' -e "ssh -i key.pem -o StrictHostKeyChecking=no" ./Dockerfile ${{ secrets.EC2_HOST }}:/home/ec2/api/
+        rsync -avz --exclude '.git' -e "ssh -i key.pem -o StrictHostKeyChecking=no" ./Dockerfile ${{ secrets.EC2_HOST }}:/home/ubuntu/api/
 
     - name: SSH and deploy with Docker
       run: |
