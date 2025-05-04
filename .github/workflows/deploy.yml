@@ -29,8 +29,8 @@ jobs:
     - name: Copy only backend files to EC2
       run: |
         rsync -avz --exclude '.git' -e "ssh -i key.pem -o StrictHostKeyChecking=no" ./api/ ${{ secrets.EC2_HOST }}:/home/ubuntu/api
-        rsync -avz --exclude '.git' -e "ssh -i key.pem -o StrictHostKeyChecking=no" ./requirements.txt ${{ secrets.EC2_HOST }}:/home/ubuntu/api/
-        rsync -avz --exclude '.git' -e "ssh -i key.pem -o StrictHostKeyChecking=no" ./Dockerfile ${{ secrets.EC2_HOST }}:/home/ubuntu/api/
+        rsync -avz --exclude '.git' -e "ssh -i key.pem -o StrictHostKeyChecking=no" ./requirements.txt ${{ secrets.EC2_HOST }}:/home/ubuntu/
+        rsync -avz --exclude '.git' -e "ssh -i key.pem -o StrictHostKeyChecking=no" ./Dockerfile ${{ secrets.EC2_HOST }}:/home/ubuntu/
 
     - name: SSH and deploy with Docker
       run: |
