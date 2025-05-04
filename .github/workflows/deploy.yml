@@ -13,6 +13,13 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
+    
+    - name: Validate Secrets
+      run: |
+        if [ -z "${{ secrets.EC2_SSH_KEY }}" ] || [ -z "${{ secrets.EC2_HOST }}" ]; then
+          echo "Required secrets are missing: EC2_SSH_KEY or EC2_HOST."
+          exit 1
+        fi
 
     - name: Set up SSH key
       run: |
