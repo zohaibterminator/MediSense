@@ -10,7 +10,7 @@ class User(BaseModel):
     password: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Chat(BaseModel):
@@ -18,7 +18,7 @@ class Chat(BaseModel):
     user_id: UUID
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ChatRole(str, Enum):
@@ -31,7 +31,7 @@ class Message(BaseModel):
     role: ChatRole
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Vote(BaseModel):
@@ -40,7 +40,7 @@ class Vote(BaseModel):
     is_upvoted: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Document(BaseModel):
@@ -51,7 +51,7 @@ class Document(BaseModel):
     user_id: UUID
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Suggestion(BaseModel):
@@ -66,4 +66,4 @@ class Suggestion(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True

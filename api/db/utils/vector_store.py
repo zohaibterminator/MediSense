@@ -1,28 +1,31 @@
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_qdrant import QdrantVectorStore
 from dotenv import load_dotenv
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
+from langchain_qdrant import QdrantVectorStore as Qdrant, FastEmbedSparse, RetrievalMode
 import os
 load_dotenv()
 
 
-model_name = "abhinand/MedEmbed-large-v0.1"
-model_kwargs = {'device': 'cpu'}
-encode_kwargs = {'normalize_embeddings': False}
-
-embeddings = HuggingFaceEmbeddings(
-    model_name=model_name,
-    model_kwargs=model_kwargs,
-    encode_kwargs=encode_kwargs
+embeddings = HuggingFaceEndpointEmbeddings(
+    model=os.getenv("EMBEDDING_ENDPOINT"),
+    huggingfacehub_api_token=os.getenv("HF_TOKEN")
 )
+sparse_embeddings = FastEmbedSparse(model_name="Qdrant/BM25")
 
-def vector_store(top_k=3):
-    retriever = QdrantVectorStore.from_existing_collection(
-        embedding=embeddings,
-        collection_name="medical_embeddings",
+def vector_store(top_k=5):
+    qdrant_vs = Qdrant.from_existing_collection(
         url=os.getenv("QDRANT_URL"),
         api_key=os.getenv("QDRANT_API_KEY"),
-    ).as_retriever(search_type="mmr", search_kwargs={"k": top_k})
-    return retriever
+        collection_name="medical_embeddings",
+        embedding=embeddings,
+        vector_name='MedEmbed-base-v0.1',
+        sparse_embedding=sparse_embeddings,
+        sparse_vector_name='bm25',
+        retrieval_mode=RetrievalMode.HYBRID,
+        metadata_payload_key=None,
+        content_payload_key="text",
+    )
+
+    return qdrant_vs.as_retriever(search_type="mmr", search_kwargs={"k": top_k})
 
 
 def format_docs(docs):

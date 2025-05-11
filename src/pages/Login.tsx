@@ -27,7 +27,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${process.env.BACKEND_URL}/auth/sign_in/`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/sign_in/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -44,7 +44,7 @@ const Login = () => {
         throw new Error(data.detail || 'Login failed');
       }
 
-         // Store user ID and email
+      // Store user ID and email
       localStorage.setItem('userId', data.user_id);
       localStorage.setItem('userEmail', email);
       

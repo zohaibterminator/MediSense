@@ -23,7 +23,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  // Get user data from localStorage
+
   const userId = localStorage.getItem('userId');
   const userEmail = localStorage.getItem('userEmail');
 
@@ -37,7 +37,7 @@ const Index = () => {
     setIsLoadingMessages(true);
     setCurrentChat(chatId);
     try {
-      const response = await fetch(`${process.env.BACKEND_URL}/chat/${chatId}/get_messages`);
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}/get_messages`);
       if (response.ok) {
         const messages = await response.json();
         setCurrentMessages(messages.map((msg: any) => ({

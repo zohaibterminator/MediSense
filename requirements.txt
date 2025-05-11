@@ -13,6 +13,5 @@ langchain
 langchain-huggingface
 langchain-qdrant
 langchain-groq
-tf-keras
 llama-cloud-services
 python-multipart

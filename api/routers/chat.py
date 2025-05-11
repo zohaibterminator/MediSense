@@ -7,11 +7,12 @@ from langchain_groq import ChatGroq
 from api.db import models
 from api.db.utils.vector_store import *
 from api.db.utils.groq import getGroq
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from api.db.queries import getMessagesByChatId, getChatbyUserId, getChatById
 from llama_cloud_services import LlamaParse
+from langchain.memory import ConversationBufferWindowMemory, ConversationSummaryMemory, CombinedMemory
 import os
 import tempfile
 from uuid import UUID
@@ -24,6 +25,37 @@ async def generate_stream(runnable, input_text):
     async for chunk in runnable.astream(input_text):
         yield f"data: {chunk}\n\n"
         await asyncio.sleep(0.05)
+
+
+def get_memory(llm: ChatGroq, chat_id: UUID, db: Session) -> CombinedMemory:
+    buffer_memory = ConversationBufferWindowMemory(
+        k=3,
+        memory_key="buffer_history",
+        input_key="user_input",
+        return_messages=True
+    )
+
+    summary_memory = ConversationSummaryMemory(
+        llm=llm,
+        memory_key="summary_history",
+        input_key="user_input",
+        return_messages=True
+    )
+    
+    # Load previous messages from DB (last 20 messages)
+    db_messages = db.query(models.Message).filter(
+        models.Message.chat_id == chat_id
+    ).order_by(models.Message.created_at.desc()).limit(20).all()
+
+    for msg in reversed(db_messages):
+        if msg.role == "user":
+            buffer_memory.chat_memory.add_user_message(msg.content)
+            summary_memory.chat_memory.add_user_message(msg.content)
+        else:
+            buffer_memory.chat_memory.add_ai_message(msg.content)
+            summary_memory.chat_memory.add_ai_message(msg.content)
+    
+    return CombinedMemory(memories=[buffer_memory, summary_memory])
 
 
 @router.get("/")
@@ -194,24 +226,14 @@ async def parse_pdf(file: UploadFile = File(...)):
 @router.post("/{chat_id}/infer")
 async def infer_diagnosis(chat_id: UUID, message: Message, db: Session = Depends(get_db), llm: ChatGroq = Depends(getGroq)):
     try:
-        chat_history = db.query(models.Message).filter(models.Message.chat_id == chat_id).order_by(models.Message.created_at).all()
-        
-        previous_msgs = "\n".join(
-            f"{msg.role}: {msg.content}" 
-            for msg in chat_history
-        )
+        memory = get_memory(llm, chat_id, db)
 
         template = '''
         You're a compassionate AI doctor designed to help users with medical inquiries. Your primary goal is to provide accurate medical advice, recommend treatment options for various health conditions, and prioritize the well-being of individuals seeking assistance. In this particular task, your objective is to diagnose a medical condition and suggest treatment options to the user. You will be provided with the user's query, and relevant context to make an accurate assessment. Remember, if there's any uncertainty or the condition is complex, always advise the user to seek professional medical help promptly. \
-        Please be thorough in your assessment and ensure that your recommendations are based on the provided context. If the context does not match the query, you can say that you don't have the expertise to deal with the issue. Your responses should be clear and informative. Your guidance could potentially have a significant impact on someone's health, so accuracy and empathy are crucial in your interactions with users. Provide responses in markdown format with: \
-        - Clear headings (##) \
-        - Bullet points for lists \
-        - **Bold** for important terms \
-        - Tables when presenting lab results \
-        - Proper medical terminology \
-        - A concise summary at the end. \
+        Please be thorough in your assessment and ensure that your recommendations are based on the provided context. If the context does not match the query, you can say that you don't have the expertise to deal with the issue. Your responses should be clear and informative. Your guidance could potentially have a significant impact on someone's health, so accuracy and empathy are crucial in your interactions with users.
 
-        Previous Msgs: {previous_msgs}
+        Summary of the conversation before the 3 exchanges: {summary_history}
+        Previous 3 Exchanges: {buffer_history}
         Context: {context}
 
         Here is the question: {user_input}
@@ -224,7 +246,12 @@ async def infer_diagnosis(chat_id: UUID, message: Message, db: Session = Depends
         )
 
         runnable = (
-            {"context": retriever | format_docs , "user_input": RunnablePassthrough(), "previous_msgs": lambda x: previous_msgs}
+            {
+                "context": retriever | format_docs ,
+                "user_input": RunnablePassthrough(),
+                "buffer_history": RunnableLambda(lambda x: memory.buffer_memory.load_memory_variables(x)),
+                "summary_history": RunnableLambda(lambda x: memory.summary_memory.load_memory_variables(x)),
+            }
             | prompt
             | llm
             | StrOutputParser()
@@ -246,6 +273,24 @@ async def infer_diagnosis(chat_id: UUID, message: Message, db: Session = Depends
 
     except Exception as e:
         db.rollback()
+        print(e)
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+@router.post("/retriever_check")
+def retriever_check(message: Message):
+    try:
+        retriever = vector_store()
+        print('check1')
+        print(message.content)
+        docs = retriever.invoke(message.content)
+        print('check2')
+        return docs
+
+    except Exception as e:
         print(e)
         raise HTTPException(
             status_code=500,

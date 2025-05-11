@@ -37,7 +37,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 
   try {
-    const response = await fetch(`${process.env.BACKEND_URL}/auth/sign_up/`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/sign_up/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

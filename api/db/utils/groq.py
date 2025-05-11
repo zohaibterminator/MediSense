@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
-
 def getGroq():
     llm = ChatGroq(
         model="llama-3.3-70b-versatile",
