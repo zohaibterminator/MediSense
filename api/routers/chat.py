@@ -12,7 +12,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from api.db.queries import getMessagesByChatId, getChatbyUserId, getChatById
 from llama_cloud_services import LlamaParse
-from langchain.memory import ConversationBufferWindowMemory, ConversationSummaryMemory, CombinedMemory
+from langchain.memory import ConversationBufferWindowMemory, ConversationSummaryMemory
 import os
 import tempfile
 from uuid import UUID
@@ -27,7 +27,7 @@ async def generate_stream(runnable, input_text):
         await asyncio.sleep(0.05)
 
 
-def get_memory(llm: ChatGroq, chat_id: UUID, db: Session) -> CombinedMemory:
+def get_memory(llm: ChatGroq, chat_id: UUID, db: Session):
     buffer_memory = ConversationBufferWindowMemory(
         k=3,
         memory_key="buffer_history",
@@ -41,7 +41,7 @@ def get_memory(llm: ChatGroq, chat_id: UUID, db: Session) -> CombinedMemory:
         input_key="user_input",
         return_messages=True
     )
-    
+
     # Load previous messages from DB (last 20 messages)
     db_messages = db.query(models.Message).filter(
         models.Message.chat_id == chat_id
@@ -55,7 +55,7 @@ def get_memory(llm: ChatGroq, chat_id: UUID, db: Session) -> CombinedMemory:
             buffer_memory.chat_memory.add_ai_message(msg.content)
             summary_memory.chat_memory.add_ai_message(msg.content)
     
-    return CombinedMemory(memories=[buffer_memory, summary_memory])
+    return buffer_memory, summary_memory
 
 
 @router.get("/")
@@ -226,14 +226,14 @@ async def parse_pdf(file: UploadFile = File(...)):
 @router.post("/{chat_id}/infer")
 async def infer_diagnosis(chat_id: UUID, message: Message, db: Session = Depends(get_db), llm: ChatGroq = Depends(getGroq)):
     try:
-        memory = get_memory(llm, chat_id, db)
+        buffer_memory, summary_memory = get_memory(llm, chat_id, db)
 
         template = '''
         You're a compassionate AI doctor designed to help users with medical inquiries. Your primary goal is to provide accurate medical advice, recommend treatment options for various health conditions, and prioritize the well-being of individuals seeking assistance. In this particular task, your objective is to diagnose a medical condition and suggest treatment options to the user. You will be provided with the user's query, and relevant context to make an accurate assessment. Remember, if there's any uncertainty or the condition is complex, always advise the user to seek professional medical help promptly. \
-        Please be thorough in your assessment and ensure that your recommendations are based on the provided context. If the context does not match the query, you can say that you don't have the expertise to deal with the issue. Your responses should be clear and informative. Your guidance could potentially have a significant impact on someone's health, so accuracy and empathy are crucial in your interactions with users.
+        Please be thorough in your assessment and ensure that your recommendations are based on the provided context. If the context does not match the query, you can say that you don't have the expertise to deal with the issue. Your responses should be clear and informative. Your guidance could potentially have a significant impact on someone's health, so accuracy and empathy are crucial in your interactions with users. Your response should be in markdown format. Ensure you add '|' with the last word of each heading, and also with the last word of each paragraph, so that your responses can be parsed properly. \
 
-        Summary of the conversation before the 3 exchanges: {summary_history}
         Previous 3 Exchanges: {buffer_history}
+        Summary of the conversation before the 3 exchanges: {summary_history}
         Context: {context}
 
         Here is the question: {user_input}
@@ -249,8 +249,8 @@ async def infer_diagnosis(chat_id: UUID, message: Message, db: Session = Depends
             {
                 "context": retriever | format_docs ,
                 "user_input": RunnablePassthrough(),
-                "buffer_history": RunnableLambda(lambda x: memory.buffer_memory.load_memory_variables(x)),
-                "summary_history": RunnableLambda(lambda x: memory.summary_memory.load_memory_variables(x)),
+                "buffer_history": RunnableLambda(lambda x: buffer_memory.load_memory_variables(x)),
+                "summary_history": RunnableLambda(lambda x: summary_memory.load_memory_variables(x)),
             }
             | prompt
             | llm

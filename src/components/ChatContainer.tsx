@@ -125,7 +125,7 @@ const handleSend = async () => {
         title: "Processing",
         description: "Parsing lab reports...",
       });
-      
+
       const parsedContents = await Promise.all(
         pdfFiles.map(file => parsePdfOnBackend(file))
       );
@@ -168,6 +168,7 @@ const handleSend = async () => {
 
   const assistantMessageId = `assistant-${Date.now()}`;
   let fullResponse = ""; // Track the full response
+  let previousToken = ""; // Track the previous token
   
   try {
     const assistantMessage: Message = {
@@ -196,29 +197,29 @@ const handleSend = async () => {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
-    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
-      buffer += chunk;
+      const lines = chunk.split("\n\n").filter(Boolean);
 
-      // Process complete SSE events
-      const events = buffer.split("\n\n").filter(event => event.startsWith("data: "));
-      buffer = buffer.split("\n\n").filter(event => !event.startsWith("data: ")).join("\n\n");
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          let text = line.replace("data: ", "");
 
-      for (const event of events) {
-        const text = event.replace("data: ", "").trim();
-        if (text) {
+          if (text === "###" && fullResponse != ""){
+            text = '\n\n' + text; // Accumulate the full response
+          } else if (text.endsWith("|")) {
+            text = text.replace("|", "\n\n");
+          }
           fullResponse += text;
           setLocalMessages(prev => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
             if (lastMessage.id === assistantMessageId) {
-              // Update the entire content to maintain markdown structure
-              lastMessage.content = fullResponse;
+              lastMessage.content += text;
             }
             return updated;
           });
@@ -268,13 +269,13 @@ const handleSend = async () => {
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
               {localMessages.map((message) => (
-                <div
-                  key={message.id}
+                <div 
                   className={`flex gap-3 p-4 rounded-lg ${
                     message.role === "user" 
                       ? "bg-gray-100 dark:bg-gray-800" 
                       : "bg-blue-50 dark:bg-blue-900"
                   }`}
+                  style={{ maxWidth: 'calc(100vw - 2rem)' }} // Prevents horizontal overflow
                 >
                   <div className="h-8 w-8 rounded-full flex items-center justify-center">
                     {message.role === "user" ? (
@@ -283,11 +284,11 @@ const handleSend = async () => {
                       <Bot className="h-4 w-4" />
                     )}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="text-sm text-muted-foreground">
                       {message.timestamp.toLocaleTimeString()}
                     </div>
-                    <div className="mt-1">
+                    <div className="mt-1 max-w-full overflow-hidden">
                       {message.role === "assistant" ? (
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
@@ -318,10 +319,10 @@ const handleSend = async () => {
                             ),
                           }}
                         >
-                          {message.content}
+                          {message.content.replace(/\\n/g, '\n')}
                         </ReactMarkdown>
                       ) : (
-                        <div className="whitespace-pre-wrap">{message.content}</div>
+                        <div className="mt-1 whitespace-pre-wrap break-words">{message.content}</div>
                       )}
                     </div>
                     {message.attachments?.map((attachment, index) => (

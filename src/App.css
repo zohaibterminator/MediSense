@@ -45,6 +45,31 @@
   line-height: 1.6;
 }
 
+/* Add to your global CSS or component */
+.chat-message {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.markdown-content {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.markdown-content pre {
+  white-space: pre-wrap;
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.markdown-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .markdown h1, .markdown h2, .markdown h3 {
   margin-top: 1.5em;
   margin-bottom: 0.5em;
