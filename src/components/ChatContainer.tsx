@@ -134,13 +134,12 @@ export const ChatContainer = ({
       };
       setLocalMessages(prev => [...prev, assistantMessage]);
 
-      // Prepare form data
       const formData = new FormData();
       formData.append("message", userPrompt);
       formData.append("file", file);
-      // Send to backend
+
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}/infer/image`,
+        `${import.meta.env.VITE_BACKEND_URL}/images/${chatId}/infer/image`,
         {
           method: "POST",
           body: formData,

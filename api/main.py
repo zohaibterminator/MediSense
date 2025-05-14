@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.db.database import engine, Base
-from api.routers import authentication, chat
+from api.routers import authentication, chat, images
 import uvicorn
 
 Base.metadata.create_all(bind=engine)
@@ -21,8 +21,9 @@ app.add_middleware(
 
 app.include_router(authentication.router, prefix="/auth", tags=["Authentication"])
 app.include_router(chat.router, prefix="/chat", tags=["Chat"])
+app.include_router(images.router, prefix="/images", tags=["Images"])
 
 
 @app.get("/")
 async def root():
-    return {"message": "Al Okay"}
+    return {"message": "All Okay"}
