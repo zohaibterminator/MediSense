@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from api.routers.schemas.models import Message, Chat
 from api.db.database import get_db
@@ -7,15 +7,19 @@ from langchain_groq import ChatGroq
 from api.db import models
 from api.db.utils.vector_store import *
 from api.db.utils.groq import getGroq
+from api.db.utils.llama import getLlama
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from api.db.queries import getMessagesByChatId, getChatbyUserId, getChatById
 from llama_cloud_services import LlamaParse
-from langchain.memory import ConversationBufferWindowMemory, ConversationSummaryMemory
+from langchain.memory import ConversationBufferWindowMemory
+from openai import OpenAI
+import json
 import os
 import tempfile
 from uuid import UUID
+import base64
 import asyncio
 
 router = APIRouter()
@@ -27,7 +31,7 @@ async def generate_stream(runnable, input_text):
         await asyncio.sleep(0.05)
 
 
-def get_memory(llm: ChatGroq, chat_id: UUID, db: Session):
+def get_memory(chat_id: UUID, db: Session):
     buffer_memory = ConversationBufferWindowMemory(
         k=3,
         memory_key="buffer_history",
@@ -35,27 +39,17 @@ def get_memory(llm: ChatGroq, chat_id: UUID, db: Session):
         return_messages=True
     )
 
-    summary_memory = ConversationSummaryMemory(
-        llm=llm,
-        memory_key="summary_history",
-        input_key="user_input",
-        return_messages=True
-    )
-
-    # Load previous messages from DB (last 20 messages)
     db_messages = db.query(models.Message).filter(
         models.Message.chat_id == chat_id
-    ).order_by(models.Message.created_at.desc()).limit(20).all()
+    ).order_by(models.Message.created_at.desc()).limit(10).all()
 
     for msg in reversed(db_messages):
         if msg.role == "user":
             buffer_memory.chat_memory.add_user_message(msg.content)
-            summary_memory.chat_memory.add_user_message(msg.content)
         else:
             buffer_memory.chat_memory.add_ai_message(msg.content)
-            summary_memory.chat_memory.add_ai_message(msg.content)
-    
-    return buffer_memory, summary_memory
+
+    return buffer_memory
 
 
 @router.get("/")
@@ -223,17 +217,120 @@ async def parse_pdf(file: UploadFile = File(...)):
         raise HTTPException(500, detail=str(e))
 
 
+@router.post("/{chat_id}/infer/image")
+async def infer_image(chat_id: UUID, message: str = Form(...), file: UploadFile = File(...), db: Session = Depends(get_db), llm: ChatGroq = Depends(getGroq)):
+    try:
+        buffer_memory = get_memory(chat_id, db)
+
+        retriever = vector_store()
+
+        if file.content_type != "image/jpeg" and file.content_type != "image/png":
+            raise HTTPException(400, detail="Only JPEG and PNG images are accepted")
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix="jpg") as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_path = temp_file.name
+
+        with open(temp_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+
+        system_message = """You are a specialized Vision-Language Model (VLM) trained to analyze and describe medical images, including radiology scans (e.g., X-rays, MRIs, and CT scans) and other diagnostic visuals. Your descriptions should be clear, concise, and medically accurate, focusing on identifying anatomical structures, abnormalities, and relevant clinical findings. Avoid speculation and use standard medical terminology where applicable. If findings are inconclusive, state so clearly. Your descriptions will be used to support clinical insights, not to provide a definitive diagnosis."""
+        
+        vlm = OpenAI(
+            base_url = os.getenv('API_URL'),
+            api_key = os.getenv('HF_TOKEN'),
+        )
+
+        chat_completion = vlm.chat.completions.create(
+            model="tgi",
+            messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64_image}"
+                        }
+                    },
+                    {
+                        "type": "text",
+                        "text": system_message + "\n\n" + message
+                    }
+                ]
+            }
+        ],
+            top_p=None,
+            temperature=0.7,
+            max_tokens=1024,
+            stream=False,
+            seed=None,
+            stop=None,
+            frequency_penalty=None,
+            presence_penalty=None
+        )
+        image_description = chat_completion.choices[0].message.content
+        os.unlink(temp_path)
+
+        template = '''
+        You're a compassionate AI doctor designed to help users with medical inquiries. Your primary goal is to provide accurate medical advice, recommend treatment options for various health conditions, and prioritize the well-being of individuals seeking assistance. In this particular task, your objective is to diagnose a medical condition and suggest treatment options to the user. You will be provided with the user's query, and relevant context to make an accurate assessment. Remember, if there's any uncertainty or the condition is complex, always advise the user to seek professional medical help promptly.\
+        You are given a description of a medical image. Please analyze the description and provide a diagnosis and treatment options based on the provided context. \
+        Please be thorough in your assessment and ensure that your recommendations are based on the provided context. If the context does not match the query, you can say that you don't have the expertise to deal with the issue. Your responses should be clear and informative. Your guidance could potentially have a significant impact on someone's health, so accuracy and empathy are crucial in your interactions with users. Your response should be in markdown format. Ensure you add '|' with the last word of each heading, and also with the last word of each paragraph, so that your responses can be parsed properly. \
+
+        Previous 3 Exchanges: {buffer_history}        
+
+        Context: {context}
+
+        Description of the medical image: {image_description}
+        '''
+
+        prompt = ChatPromptTemplate.from_template(
+            template
+        )
+
+        runnable = (
+            {
+                "context": retriever | format_docs ,
+                "image_description": RunnablePassthrough(),
+                "buffer_history": RunnableLambda(lambda x: buffer_memory.load_memory_variables(x)),
+            }
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
+
+        user_message = models.Message(
+            chat_id=chat_id,
+            content=message,
+            role="user"
+        )
+
+        db.add(user_message)
+        db.commit()
+
+        return StreamingResponse(
+            generate_stream(runnable, image_description),
+            media_type="text/event-stream"
+        )
+
+    except Exception as e:
+        if 'temp_path' in locals() and os.path.exists(temp_path):
+            os.unlink(temp_path)
+        print(e)
+        raise HTTPException(500, detail=str(e))
+
+
 @router.post("/{chat_id}/infer")
 async def infer_diagnosis(chat_id: UUID, message: Message, db: Session = Depends(get_db), llm: ChatGroq = Depends(getGroq)):
     try:
-        buffer_memory, summary_memory = get_memory(llm, chat_id, db)
+        buffer_memory = get_memory(chat_id, db)
 
         template = '''
         You're a compassionate AI doctor designed to help users with medical inquiries. Your primary goal is to provide accurate medical advice, recommend treatment options for various health conditions, and prioritize the well-being of individuals seeking assistance. In this particular task, your objective is to diagnose a medical condition and suggest treatment options to the user. You will be provided with the user's query, and relevant context to make an accurate assessment. Remember, if there's any uncertainty or the condition is complex, always advise the user to seek professional medical help promptly. \
         Please be thorough in your assessment and ensure that your recommendations are based on the provided context. If the context does not match the query, you can say that you don't have the expertise to deal with the issue. Your responses should be clear and informative. Your guidance could potentially have a significant impact on someone's health, so accuracy and empathy are crucial in your interactions with users. Your response should be in markdown format. Ensure you add '|' with the last word of each heading, and also with the last word of each paragraph, so that your responses can be parsed properly. \
 
         Previous 3 Exchanges: {buffer_history}
-        Summary of the conversation before the 3 exchanges: {summary_history}
         Context: {context}
 
         Here is the question: {user_input}
@@ -250,7 +347,6 @@ async def infer_diagnosis(chat_id: UUID, message: Message, db: Session = Depends
                 "context": retriever | format_docs ,
                 "user_input": RunnablePassthrough(),
                 "buffer_history": RunnableLambda(lambda x: buffer_memory.load_memory_variables(x)),
-                "summary_history": RunnableLambda(lambda x: summary_memory.load_memory_variables(x)),
             }
             | prompt
             | llm

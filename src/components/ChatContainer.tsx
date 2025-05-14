@@ -47,211 +47,295 @@ export const ChatContainer = ({
     scrollToBottom();
   }, [localMessages]);
 
-  // Add this function to save the assistant message
-const saveAssistantMessage = async (content: string) => {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}/add_message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        content: content,
-        role: "assistant" // Changed from "user" to "assistant"
-      }),
-    });
+  const saveAssistantMessage = async (content: string) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}/add_message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: content,
+          role: "assistant"
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to save assistant message');
+      if (!response.ok) {
+        throw new Error('Failed to save assistant message');
+      }
+    } catch (error) {
+      console.error('Error saving assistant message:', error);
     }
-  } catch (error) {
-    console.error('Error saving assistant message:', error);
-  }
-};
+  };
 
-const parsePdfOnBackend = async (file: File): Promise<string> => {
-  const formData = new FormData();
-  formData.append("file", file);
+  const parsePdfOnBackend = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
 
-  try {
-    setIsSending(true);
-    toast({
-      title: "Processing",
-      description: "Analyzing lab report...",
-    });
-
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/parse-pdf`, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to parse PDF");
-    }
-
-    const data = await response.json();
-
-    // Extract the most useful information - we'll use the markdown version
-    // which is better formatted for the LLM to understand
-    const parsedContent = data.text.pages.map(page => page.md).join("\n\n");
-    
-    // Alternatively, we could extract just the test results table:
-    // const testResults = data.text.pages[0].text.match(/Test.*?Normal Ranges[\s\S]*?PLATELETS.*?\n/g)?.[0] || "";
-    
-    return parsedContent;
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : 'Failed to parse lab report',
-      variant: "destructive",
-    });
-    throw error;
-  } finally {
-    setIsSending(false);
-  }
-};
-
-const handleSend = async () => {
-  if (!input.trim() && attachments.length === 0) return;
-
-  const pdfFiles = attachments.filter(file => file.type === "application/pdf");
-  const otherFiles = attachments.filter(file => file.type !== "application/pdf");
-  
-  let parsedPdfContent = "";
-  if (pdfFiles.length > 0) {
     try {
       setIsSending(true);
       toast({
         title: "Processing",
-        description: "Parsing lab reports...",
+        description: "Analyzing lab report...",
       });
 
-      const parsedContents = await Promise.all(
-        pdfFiles.map(file => parsePdfOnBackend(file))
-      );
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/parse-pdf`, {
+        method: "POST",
+        body: formData,
+      });
 
-      parsedPdfContent = parsedContents.join("\n\n---\n\n");
+      if (!response.ok) {
+        throw new Error("Failed to parse PDF");
+      }
+
+      const data = await response.json();
+      const parsedContent = data.text.pages.map(page => page.md).join("\n\n");
+      return parsedContent;
     } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to parse lab report',
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
       setIsSending(false);
-      return;
     }
-  }
-
-  const attachmentUrls = await Promise.all(
-    attachments.map(async (file) => {
-      const url = URL.createObjectURL(file);
-      return {
-        type: file.type.startsWith("image/") ? "image" : "file",
-        url,
-        name: file.name,
-      };
-    })
-  );
-
-  const fullContent = [
-    input,
-    ...(parsedPdfContent ? [`LAB REPORT ANALYSIS:\n${parsedPdfContent}`] : [])
-  ].filter(Boolean).join("\n\n");
-
-  const userMessage: Message = {
-    id: `user-${Date.now()}`,
-    content: input,
-    role: "user",
-    timestamp: new Date(),
-    attachments: attachmentUrls,
   };
 
-  setLocalMessages(prev => [...prev, userMessage]);
-  setInput("");
-  setAttachments([]);
-  setIsSending(true);
+  const handleImageAnalysis = async (file: File, userPrompt: string) => {
+    const assistantMessageId = `assistant-${Date.now()}`;
+    let fullResponse = "";
 
-  const assistantMessageId = `assistant-${Date.now()}`;
-  let fullResponse = ""; // Track the full response
-  let previousToken = ""; // Track the previous token
-  
-  try {
-    const assistantMessage: Message = {
-      id: assistantMessageId,
-      content: "",
-      role: "assistant",
-      timestamp: new Date(),
-    };
-    
-    setLocalMessages(prev => [...prev, assistantMessage]);
-
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}/infer`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        content: fullContent,
+    try {
+      setIsSending(true);
+      
+      // Create user message with image preview
+      const imageUrl = URL.createObjectURL(file);
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        content: userPrompt || "Image uploaded for analysis",
         role: "user",
-      }),
-    });
+        timestamp: new Date(),
+        attachments: [{
+          type: "image",
+          url: imageUrl,
+          name: file.name
+        }]
+      };
+      setLocalMessages(prev => [...prev, userMessage]);
 
-    if (!response.ok || !response.body) {
-      throw new Error('Failed to get response from LLM');
-    }
+      // Create placeholder assistant message
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        content: "",
+        role: "assistant",
+        timestamp: new Date(),
+      };
+      setLocalMessages(prev => [...prev, assistantMessage]);
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder('utf-8');
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n\n").filter(Boolean);
-
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          let text = line.replace("data: ", "");
-
-          if (text === "###" && fullResponse != ""){
-            text = '\n\n' + text; // Accumulate the full response
-          } else if (text.endsWith("|")) {
-            text = text.replace("|", "\n\n");
-          }
-          fullResponse += text;
-          setLocalMessages(prev => {
-            const updated = [...prev];
-            const lastMessage = updated[updated.length - 1];
-            if (lastMessage.id === assistantMessageId) {
-              lastMessage.content += text;
-            }
-            return updated;
-          });
+      // Prepare form data
+      const formData = new FormData();
+      formData.append("message", userPrompt);
+      formData.append("file", file);
+      // Send to backend
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}/infer/image`,
+        {
+          method: "POST",
+          body: formData,
         }
+      );
+
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to analyze image');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n\n").filter(Boolean);
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            let text = line.replace("data: ", "");
+            fullResponse += text;
+            setLocalMessages(prev => {
+              const updated = [...prev];
+              const lastMessage = updated[updated.length - 1];
+              if (lastMessage.id === assistantMessageId) {
+                lastMessage.content += text;
+              }
+              return updated;
+            });
+          }
+        }
+      }
+
+      await saveAssistantMessage(fullResponse);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to analyze image',
+        variant: "destructive",
+      });
+      setLocalMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() && attachments.length === 0) return;
+
+    const pdfFiles = attachments.filter(file => file.type === "application/pdf");
+    const imageFiles = attachments.filter(file => file.type.startsWith("image/"));
+    const otherFiles = attachments.filter(file => 
+      !file.type.startsWith("image/") && file.type !== "application/pdf"
+    );
+    
+    let parsedPdfContent = "";
+    if (pdfFiles.length > 0) {
+      try {
+        setIsSending(true);
+        toast({
+          title: "Processing",
+          description: "Parsing lab reports...",
+        });
+
+        const parsedContents = await Promise.all(
+          pdfFiles.map(file => parsePdfOnBackend(file))
+        );
+        parsedPdfContent = parsedContents.join("\n\n---\n\n");
+      } catch (error) {
+        setIsSending(false);
+        return;
       }
     }
 
-    // After streaming completes, save the full response
-    await saveAssistantMessage(fullResponse);
+    // Handle image attachments with the user's prompt
+    if (imageFiles.length > 0) {
+      imageFiles.forEach(file => handleImageAnalysis(file, input));
+      setAttachments(otherFiles); // Keep only non-image files
+      if (otherFiles.length === 0) {
+        setInput("");
+        return;
+      }
+    }
+
+    const attachmentUrls = await Promise.all(
+      otherFiles.map(async (file) => {
+        const url = URL.createObjectURL(file);
+        return {
+          type: "file",
+          url,
+          name: file.name,
+        };
+      })
+    );
+
+    const fullContent = [
+      input,
+      ...(parsedPdfContent ? [`LAB REPORT ANALYSIS:\n${parsedPdfContent}`] : [])
+    ].filter(Boolean).join("\n\n");
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      content: input,
+      role: "user",
+      timestamp: new Date(),
+      attachments: attachmentUrls,
+    };
+
+    setLocalMessages(prev => [...prev, userMessage]);
+    setInput("");
+    setAttachments([]);
+    setIsSending(true);
+
+    const assistantMessageId = `assistant-${Date.now()}`;
+    let fullResponse = "";
     
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : 'Failed to get response from AI',
-      variant: "destructive",
-    });
-    setLocalMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
-  } finally {
-    setIsSending(false);
-  }
-};
+    try {
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        content: "",
+        role: "assistant",
+        timestamp: new Date(),
+      };
+
+      setLocalMessages(prev => [...prev, assistantMessage]);
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}/infer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: fullContent,
+          role: "user",
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to get response from LLM');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n\n").filter(Boolean);
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            let text = line.replace("data: ", "");
+            fullResponse += text;
+            setLocalMessages(prev => {
+              const updated = [...prev];
+              const lastMessage = updated[updated.length - 1];
+              if (lastMessage.id === assistantMessageId) {
+                lastMessage.content += text;
+              }
+              return updated;
+            });
+          }
+        }
+      }
+
+      await saveAssistantMessage(fullResponse);
+
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to get response from AI',
+        variant: "destructive",
+      });
+      setLocalMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
-      const newFiles = Array.from(files);
-      setAttachments(prev => [...prev, ...newFiles]);
-      toast({
-        title: "Files attached",
-        description: `${newFiles.length} file(s) attached successfully.`,
-      });
-    }
+    if (!files) return;
+
+    const newFiles = Array.from(files);
+    setAttachments(prev => [...prev, ...newFiles]);
+    
+    toast({
+      title: "Files attached",
+      description: `${newFiles.length} file(s) attached. Add your prompt and click send.`,
+    });
   };
 
   const removeAttachment = (index: number) => {
@@ -270,12 +354,13 @@ const handleSend = async () => {
             <div className="space-y-4">
               {localMessages.map((message) => (
                 <div 
+                  key={message.id}
                   className={`flex gap-3 p-4 rounded-lg ${
                     message.role === "user" 
                       ? "bg-gray-100 dark:bg-gray-800" 
                       : "bg-blue-50 dark:bg-blue-900"
                   }`}
-                  style={{ maxWidth: 'calc(100vw - 2rem)' }} // Prevents horizontal overflow
+                  style={{ maxWidth: 'calc(100vw - 2rem)' }}
                 >
                   <div className="h-8 w-8 rounded-full flex items-center justify-center">
                     {message.role === "user" ? (
@@ -328,11 +413,16 @@ const handleSend = async () => {
                     {message.attachments?.map((attachment, index) => (
                       <div key={index} className="mt-2">
                         {attachment.type === "image" ? (
-                          <img
-                            src={attachment.url}
-                            alt={attachment.name}
-                            className="max-w-xs rounded-lg"
-                          />
+                          <div className="relative group">
+                            <img
+                              src={attachment.url}
+                              alt={attachment.name}
+                              className="max-h-64 max-w-full rounded-lg object-contain border"
+                            />
+                            <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                              {attachment.name}
+                            </div>
+                          </div>
                         ) : (
                           <a
                             href={attachment.url}
@@ -390,6 +480,7 @@ const handleSend = async () => {
                 className="hidden"
                 multiple
                 onChange={handleFileUpload}
+                accept="image/*,.pdf"
               />
               <Textarea
                 value={input}

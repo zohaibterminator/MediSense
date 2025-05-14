@@ -9,6 +9,7 @@ embeddings = HuggingFaceEndpointEmbeddings(
     model=os.getenv("EMBEDDING_ENDPOINT"),
     huggingfacehub_api_token=os.getenv("HF_TOKEN")
 )
+
 sparse_embeddings = FastEmbedSparse(model_name="Qdrant/BM25")
 
 def vector_store(top_k=5):

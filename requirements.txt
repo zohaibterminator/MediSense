@@ -15,3 +15,5 @@ langchain-qdrant
 langchain-groq
 llama-cloud-services
 python-multipart
+huggingface_hub
+openai
