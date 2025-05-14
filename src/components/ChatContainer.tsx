@@ -164,6 +164,12 @@ export const ChatContainer = ({
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             let text = line.replace("data: ", "");
+
+            if (text === "###" && fullResponse != ""){
+              text = '\n\n' + text; // Accumulate the full response
+            } else if (text.endsWith("|")) {
+              text = text.replace("|", "\n\n");
+            }
             fullResponse += text;
             setLocalMessages(prev => {
               const updated = [...prev];
@@ -298,6 +304,12 @@ export const ChatContainer = ({
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             let text = line.replace("data: ", "");
+
+            if (text === "###" && fullResponse != ""){
+              text = '\n\n' + text; // Accumulate the full response
+            } else if (text.endsWith("|")) {
+              text = text.replace("|", "\n\n");
+            }
             fullResponse += text;
             setLocalMessages(prev => {
               const updated = [...prev];
@@ -311,6 +323,7 @@ export const ChatContainer = ({
         }
       }
 
+      // After streaming completes, save the full response
       await saveAssistantMessage(fullResponse);
 
     } catch (error) {
