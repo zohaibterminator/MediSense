@@ -29,6 +29,7 @@ class ChatRole(str, Enum):
 class Message(BaseModel):
     content: str
     role: ChatRole
+    image_url: Optional[str]
 
     class Config:
         from_attributes = True

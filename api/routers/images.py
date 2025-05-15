@@ -11,19 +11,21 @@ from sqlalchemy.orm import Session
 from api.db.utils.groq import getGroq
 from langchain_groq import ChatGroq
 from api.db.database import get_db
-from api.db.utils.vector_store import vector_store, format_docs
+from api.db.utils.supabase import getSupabase
 from api.db.utils.chat_utils import generate_stream, get_memory
 import tempfile
 import os
 from fastapi.responses import StreamingResponse
 from langchain_core.output_parsers import StrOutputParser
 from api.db import models
-
+from uuid import uuid4
+from dotenv import load_dotenv
+load_dotenv()
 
 router = APIRouter()
 
 @router.post("/{chat_id}/infer/image")
-async def infer_image(chat_id: UUID, message: str = Form(...), file: UploadFile = File(...), db: Session = Depends(get_db), llm: ChatGroq = Depends(getGroq), vlm: OpenAI = Depends(getLlama)):
+async def infer_image(chat_id: UUID, message: str = Form(...), file: UploadFile = File(...), db: Session = Depends(get_db), llm: ChatGroq = Depends(getGroq), vlm: OpenAI = Depends(getLlama), supabase: Session = Depends(getSupabase)):
     try:
         buffer_memory = get_memory(chat_id, db)
 
@@ -37,6 +39,22 @@ async def infer_image(chat_id: UUID, message: str = Form(...), file: UploadFile 
 
         with open(temp_path, "rb") as image_file:
             base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+
+        # Upload the image to Supabase storage
+        file_ext = "jpg" if file.content_type == "image/jpeg" else "png"
+        image_id = f"{uuid4()}.{file_ext}"
+        file_content = await file.read()
+
+        with open(temp_path, "rb") as image_file:
+            response = supabase.storage.from_("medisense-medical-images").upload(
+                path=image_id,
+                file=image_file,
+                file_options={"content-type": file.content_type}
+            )
+            
+            print(response)
+
+        image_url = supabase.storage.from_('bucket').get_public_url(image_id)
 
         system_message = """You are a specialized Vision-Language Model (VLM) trained to analyze and describe medical images, including radiology scans (e.g., X-rays, MRIs, and CT scans) and other diagnostic visuals. Your descriptions should be clear, concise, and medically accurate, focusing on identifying anatomical structures, abnormalities, and relevant clinical findings. Avoid speculation and use standard medical terminology where applicable. If findings are inconclusive, state so clearly. Your descriptions will be used to support clinical insights, not to provide a definitive diagnosis."""
 
@@ -98,7 +116,8 @@ async def infer_image(chat_id: UUID, message: str = Form(...), file: UploadFile 
         user_message = models.Message(
             chat_id=chat_id,
             content=message,
-            role="user"
+            role="user",
+            image_url=image_url
         )
 
         db.add(user_message)
@@ -113,4 +132,5 @@ async def infer_image(chat_id: UUID, message: str = Form(...), file: UploadFile 
         if 'temp_path' in locals() and os.path.exists(temp_path):
             os.unlink(temp_path)
         print(e)
+        db.rollback()
         raise HTTPException(500, detail=str(e))

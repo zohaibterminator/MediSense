@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { NewChatDialog } from "@/components/NewChatDialog";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, User } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 
 interface Message {
   id: string;
@@ -40,11 +41,33 @@ const Index = () => {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/chat/${chatId}/get_messages`);
       if (response.ok) {
         const messages = await response.json();
+
+        let blobUrl = "";
+        if (messages.image_url) {
+          const supabase = createClient(import.meta.env.SUPABASE_URL, import.meta.env.SUPABASE_KEY)
+
+          const { data: fileBlob, error } = await supabase
+              .storage
+              .from('medisense-medical-images')
+              .download(messages.image_url);
+
+          if (error) {
+              console.error("Failed to download image:", error.message);
+            } else if (fileBlob) {
+              blobUrl = URL.createObjectURL(fileBlob);
+            }
+        }
+
         setCurrentMessages(messages.map((msg: any) => ({
           id: msg.id,
-          content: msg.content,
-          role: msg.role === 'user' ? 'user' : 'assistant',
-          timestamp: new Date(msg.created_at)
+          content: msg.content.text ?? "",
+          role: msg.role === "user" ? "user" : "assistant",
+          timestamp: new Date(msg.created_at),
+          attachments: msg.image_url ? [{
+            type: "image",
+            url: blobUrl,
+            name: msg.image_url.split("/").pop() || "image"
+          }] : []
         })));
       }
     } catch (error) {

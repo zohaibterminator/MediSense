@@ -47,6 +47,7 @@ class Message(Base):
     chat_id = Column(UUID(as_uuid=True), ForeignKey("Chat.id", ondelete="CASCADE"), nullable=False)
     role = Column(String, nullable=False)
     content = Column(JSON, nullable=False)
+    image_url = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     chat = relationship("Chat", back_populates="messages")
