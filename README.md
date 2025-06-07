@@ -1,69 +1,93 @@
-# Welcome to your Lovable project
+# 🧠 MediSense – AI-Powered Medical Diagnostic Assistant
 
-## Project info
+MediSense is a multimodal AI assistant that diagnoses diseases based on lab reports and medical images. It combines Retrieval-Augmented Generation (RAG) and Vision-Language Modeling (VLM) to provide high-quality diagnostic assistance, specialist recommendations, and anomaly detection.
 
-**URL**: https://lovable.dev/projects/12a671e7-0cfe-4cc4-9ce4-1d22a7e1a6b1
+---
 
-## How can I edit this code?
+## 🚀 Features
 
-There are several ways of editing your application.
+- 🧬 **LLM-based Diagnosis:** Fine-tuned LLaMA 3.2 11B on a radiological dataset using QLoRA.
+- 🔍 **Hybrid RAG System:** Combines BM25 + Semantic Search using LangChain.
+- 🩻 **Vision-to-Text Support:** Converts medical images (e.g. X-rays) to captions for LLM input.
+- 📊 **Structured Lab Report Parsing** and intelligent recommendation generation.
+- 💬 **Groq-powered Inference:** Uses LLaMA 3.3 70B via Groq for high-speed inference.
+- 🧠 **Custom Embeddings:** Uses a medical-domain embedding model from Hugging Face.
+- ☁️ **Deployed on HF Inference Endpoints** and integrated into a FastAPI backend.
+- 🔐 **User & Chat Storage:** Fully integrated with Supabase.
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/12a671e7-0cfe-4cc4-9ce4-1d22a7e1a6b1) and start prompting.
+## 🧱 Architecture Overview
 
-Changes made via Lovable will be committed automatically to this repo.
+![MediSense Architecture](https://ibb.co/DPVz7h9D)
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🧠 Models Used
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+| Component          | Model Used                                | Hosting                     |
+|-------------------|--------------------------------------------|-----------------------------|
+| VLM               | LLaMA 3.2 11B Vision (QLoRA fine-tuned)    | Hugging Face Endpoint       |
+| Alternate LLM     | LLaMA 3.3 70B                              | Groq Inference              |
+| Embeddings        | medEmbed-base-v0.1                         | Hugging Face Endpoint       |
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🧩 Tech Stack
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- **Frontend:** Next.js
+- **Backend:** FastAPI
+- **Database:** Supabase
+- **Vector Store:** Qdrant
+- **RAG Framework:** LangChain
 
-# Step 3: Install the necessary dependencies.
+---
+
+## 🛠️ Setup Instructions
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/your-username/medisense.git
+cd medisense
+```
+
+### 2. Setup Environment Variables
+```ini
+DATABASE_URL=...
+LLAMA_CLOUD_API_KEY=...
+SUPABASE_URL=...
+SUPABASE_KEY=...
+SUPABASE_ACCESS_KEY=...
+HF_TOKEN=...
+VITE_BACKEND_URL=http://localhost:8000
+EMBEDDING_ENDPOINT=...
+GROQ_API_KEY=...
+QDRANT_URL=...
+QDRANT_API_KEY=...
+```
+
+### 3. Install Backend Dependencies
+```
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+### 4. Start Frontend
+```
 npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📄 License
+This project is licensed under the MIT License.
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🌐 Acknowledgments
 
-## What technologies are used for this project?
-
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/12a671e7-0cfe-4cc4-9ce4-1d22a7e1a6b1) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+- Hugging Face for hosting endpoints
+- Groq for ultra-fast LLM inference
+- LangChain for chaining + hybrid RAG
+- ROCOv2 and Qwen for medical imaging support
