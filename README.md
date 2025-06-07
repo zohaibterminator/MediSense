@@ -17,12 +17,6 @@ MediSense is a multimodal AI assistant that diagnoses diseases based on lab repo
 
 ---
 
-## 🧱 Architecture Overview
-
-![MediSense Architecture](https://ibb.co/DPVz7h9D)
-
----
-
 ## 🧠 Models Used
 
 | Component          | Model Used                                | Hosting                     |
