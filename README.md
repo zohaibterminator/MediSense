@@ -21,7 +21,7 @@ MediSense is a multimodal AI assistant that diagnoses diseases based on lab repo
 
 | Component          | Model Used                                | Hosting                     |
 |-------------------|--------------------------------------------|-----------------------------|
-| VLM               | LLaMA 3.2 11B Vision (QLoRA fine-tuned)    | Hugging Face Endpoint       |
+| VLM               | LLaMA 3.2 11B Vision (QLoRA fine-tuned)    | HuggingFace Endpoint        |
 | LLM               | LLaMA 3.3 70B                              | Groq                        |
 | Embedding Model   | medEmbed-base-v0.1                         | HuggingFace Endpoint        |
 
