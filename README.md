@@ -9,7 +9,7 @@ MediSense is a multimodal AI assistant that diagnoses diseases based on lab repo
 - 🧬 **LLM-based Diagnosis:** Fine-tuned LLaMA 3.2 11B Vision model on a radiological dataset using QLoRA fine-tuning technique.
 - 🔍 **Hybrid RAG System:** Combines BM25 + Semantic Search using Qdrant as the vector database.
 - 🩻 **Vision-to-Text Support:** Converts medical images (e.g. X-rays) to medical descriptions for LLM input.
-- 📊 **Structured Lab Report Parsing: ** Parsing lab reports for analysis using LlamaParse while preserving the structure of the document.
+- 📊 **Structured Lab Report Parsing:** Parsing lab reports for analysis using LlamaParse while preserving the structure of the document.
 - 💬 **Groq-powered Inference:** Uses LLaMA 3.3 70B open source LLM via Groq for high-speed inference.
 - 🧠 **Custom Embeddings:** Uses an open-source embedding model from HuggingFace which is fine-tuned to be medically alligned.
 - ☁️ **Deployed on HF Inference Endpoints**: Deployed the fine-tuned Vision model and the embedding model on HF Endpoints and integrated them into the FastAPI backend.
