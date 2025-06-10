@@ -6,14 +6,14 @@ MediSense is a multimodal AI assistant that diagnoses diseases based on lab repo
 
 ## 🚀 Features
 
-- 🧬 **LLM-based Diagnosis:** Fine-tuned LLaMA 3.2 11B on a radiological dataset using QLoRA.
-- 🔍 **Hybrid RAG System:** Combines BM25 + Semantic Search using LangChain.
-- 🩻 **Vision-to-Text Support:** Converts medical images (e.g. X-rays) to captions for LLM input.
-- 📊 **Structured Lab Report Parsing** and intelligent recommendation generation.
-- 💬 **Groq-powered Inference:** Uses LLaMA 3.3 70B via Groq for high-speed inference.
-- 🧠 **Custom Embeddings:** Uses a medical-domain embedding model from Hugging Face.
-- ☁️ **Deployed on HF Inference Endpoints** and integrated into a FastAPI backend.
-- 🔐 **User & Chat Storage:** Fully integrated with Supabase.
+- 🧬 **LLM-based Diagnosis:** Fine-tuned LLaMA 3.2 11B Vision model on a radiological dataset using QLoRA fine-tuning technique.
+- 🔍 **Hybrid RAG System:** Combines BM25 + Semantic Search using Qdrant as the vector database.
+- 🩻 **Vision-to-Text Support:** Converts medical images (e.g. X-rays) to medical descriptions for LLM input.
+- 📊 **Structured Lab Report Parsing: ** Parsing lab reports for analysis using LlamaParse while preserving the structure of the document.
+- 💬 **Groq-powered Inference:** Uses LLaMA 3.3 70B open source LLM via Groq for high-speed inference.
+- 🧠 **Custom Embeddings:** Uses an open-source embedding model from HuggingFace which is fine-tuned to be medically alligned.
+- ☁️ **Deployed on HF Inference Endpoints**: Deployed the fine-tuned Vision model and the embedding model on HF Endpoints and integrated them into the FastAPI backend.
+- 🔐 **User & Chat Storage:** Fully integrated with Supabase for storage.
 
 ---
 
@@ -22,8 +22,8 @@ MediSense is a multimodal AI assistant that diagnoses diseases based on lab repo
 | Component          | Model Used                                | Hosting                     |
 |-------------------|--------------------------------------------|-----------------------------|
 | VLM               | LLaMA 3.2 11B Vision (QLoRA fine-tuned)    | Hugging Face Endpoint       |
-| Alternate LLM     | LLaMA 3.3 70B                              | Groq Inference              |
-| Embeddings        | medEmbed-base-v0.1                         | Hugging Face Endpoint       |
+| LLM               | LLaMA 3.3 70B                              | Groq                        |
+| Embedding Model   | medEmbed-base-v0.1                         | HuggingFace Endpoint        |
 
 ---
 
