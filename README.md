@@ -81,7 +81,8 @@ This project is licensed under the MIT License.
 
 ## 🌐 Acknowledgments
 
-- Hugging Face for hosting endpoints
+- Hugging Face for model hosting and open-source models and datasets
 - Groq for ultra-fast LLM inference
-- LangChain for chaining + hybrid RAG
-- ROCOv2 and Qwen for medical imaging support
+- LangChain for chaining
+- Qdrant for hybrid RAG
+- Meta for open-source LLMs and VLMs
