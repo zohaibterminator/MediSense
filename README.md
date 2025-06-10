@@ -1,4 +1,4 @@
-# 🧠 MediSense – AI-Powered Medical Diagnostic Assistant
+# 🧠 MediSense – AI-Powered Medical Assistant
 
 MediSense is a multimodal AI assistant that diagnoses diseases based on lab reports and medical images. It combines Retrieval-Augmented Generation (RAG) and Vision-Language Modeling (VLM) to provide high-quality diagnostic assistance, specialist recommendations, and anomaly detection.
 
@@ -41,7 +41,7 @@ MediSense is a multimodal AI assistant that diagnoses diseases based on lab repo
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/medisense.git
+git clone https://github.com/zohaibterminator/MediSense.git
 cd medisense
 ```
 
