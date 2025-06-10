@@ -1,6 +1,6 @@
 # 🧠 MediSense – AI-Powered Medical Assistant
 
-MediSense is a multimodal AI assistant that diagnoses diseases based on lab reports and medical images. It combines Retrieval-Augmented Generation (RAG) and Vision-Language Modeling (VLM) to provide high-quality diagnostic assistance, specialist recommendations, and anomaly detection.
+MediSense is a multimodal AI assistant that diagnoses diseases based on lab reports and medical images. It combines Retrieval-Augmented Generation (RAG) and Vision-Language Modeling (VLM) to provide high-quality diagnostic assistance, and anomaly detection.
 
 ---
 
